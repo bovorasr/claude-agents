@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO="bovorasr/claude-agents"
+BRANCH="main"
+BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
+MANIFEST_FILE=".claude/.agent-team-manifest"
+
+FILES=(
+  "agents/architect.md"
+  "agents/senior-dev.md"
+  "agents/junior-dev.md"
+  "agents/merge-specialist.md"
+  "skills/team/SKILL.md"
+  "skills/team/worktree.md"
+)
+
+# ---------------------------------------------------------------------------
+# Utilities
+# ---------------------------------------------------------------------------
+
+sha256() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    echo "ERROR: no sha256 tool found (tried shasum, sha256sum)" >&2
+    exit 1
+  fi
+}
+
+# Detect TTY availability for interactive prompts
+if [ -c /dev/tty ]; then
+  INTERACTIVE=true
+else
+  INTERACTIVE=false
+fi
+
+# ---------------------------------------------------------------------------
+# Summary counters (exported so handle_conflict can update them)
+# ---------------------------------------------------------------------------
+COUNT_INSTALLED=0
+COUNT_UPDATED=0
+COUNT_SKIPPED=0
+COUNT_CONFLICTS=0
+
+# ---------------------------------------------------------------------------
+# Interactive conflict handler — must be defined before main flow
+# ---------------------------------------------------------------------------
+handle_conflict() {
+  local file="$1"
+  local target="$2"
+  local tmp_file="$3"
+  local upstream_hash="$4"
+
+  while true; do
+    echo ""
+    echo "  Conflict: ${file}"
+    echo "  Your local version differs from both your last install and the upstream."
+    printf "  [o]verwrite  [s]kip  [d]iff  [b]ackup+overwrite: "
+    if ! read -r choice < /dev/tty 2>/dev/null; then
+      echo ""
+      echo "    -> /dev/tty unavailable: keeping local version"
+      echo "    -> Re-run in a terminal for interactive resolution"
+      local local_hash
+      local_hash="$(sha256 "$target")"
+      echo "${local_hash}  ${file}" >> "$MANIFEST_FILE"
+      COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+      COUNT_CONFLICTS=$((COUNT_CONFLICTS + 1))
+      return
+    fi
+
+    case "$choice" in
+      o|O)
+        cp "$tmp_file" "$target"
+        echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+        echo "    -> Overwritten with upstream"
+        COUNT_UPDATED=$((COUNT_UPDATED + 1))
+        return
+        ;;
+      s|S)
+        local local_hash
+        local_hash="$(sha256 "$target")"
+        echo "${local_hash}  ${file}" >> "$MANIFEST_FILE"
+        echo "    -> Kept local version (conflict will re-appear on next run)"
+        COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+        COUNT_CONFLICTS=$((COUNT_CONFLICTS + 1))
+        return
+        ;;
+      d|D)
+        echo ""
+        diff -u "$target" "$tmp_file" || true
+        echo ""
+        # Loop back to re-prompt
+        ;;
+      b|B)
+        cp "$target" "${target}.bak"
+        cp "$tmp_file" "$target"
+        echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+        echo "    -> Backed up to ${target}.bak, overwritten with upstream"
+        COUNT_UPDATED=$((COUNT_UPDATED + 1))
+        return
+        ;;
+      *)
+        echo "    -> Please enter o, s, d, or b"
+        ;;
+    esac
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Step 1: Read old manifest content into memory
+# ---------------------------------------------------------------------------
+OLD_MANIFEST_CONTENT=""
+if [ -f "$MANIFEST_FILE" ]; then
+  OLD_MANIFEST_CONTENT="$(cat "$MANIFEST_FILE")"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 2: Download all files to a temp directory (fail fast — no partial state)
+# ---------------------------------------------------------------------------
+WORK_TMPDIR="$(mktemp -d)"
+trap 'rm -rf "$WORK_TMPDIR"' EXIT
+
+echo "Downloading files..."
+for file in "${FILES[@]}"; do
+  url="${BASE_URL}/${file}"
+  dest="${WORK_TMPDIR}/${file}"
+  mkdir -p "$(dirname "$dest")"
+  if ! curl -fsSL "$url" -o "$dest"; then
+    echo "ERROR: failed to download ${url}" >&2
+    exit 1
+  fi
+done
+echo "All files downloaded."
+echo ""
+
+# ---------------------------------------------------------------------------
+# Step 3: Process each file — truncate manifest first, then append per file
+# ---------------------------------------------------------------------------
+mkdir -p ".claude"
+> "$MANIFEST_FILE"
+
+for file in "${FILES[@]}"; do
+  target=".claude/${file}"
+  tmp_file="${WORK_TMPDIR}/${file}"
+
+  upstream_hash="$(sha256 "$tmp_file")"
+  manifest_hash="$(echo "$OLD_MANIFEST_CONTENT" | grep -F " ${file}" 2>/dev/null | awk '{print $1}' | head -1 || echo "")"
+
+  if [ ! -f "$target" ]; then
+    # File doesn't exist locally → install
+    mkdir -p "$(dirname "$target")"
+    cp "$tmp_file" "$target"
+    echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+    echo "  [installed]  ${file}"
+    COUNT_INSTALLED=$((COUNT_INSTALLED + 1))
+
+  elif [ -z "$manifest_hash" ]; then
+    # No manifest entry — file existed before we started tracking
+    local_hash="$(sha256 "$target")"
+    if [ "$local_hash" = "$upstream_hash" ]; then
+      # Local matches upstream — register and move on
+      echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+      echo "  [unchanged]  ${file}"
+      COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+    else
+      # Differs from upstream with no history — treat conservatively
+      if [ "$INTERACTIVE" = true ]; then
+        handle_conflict "$file" "$target" "$tmp_file" "$upstream_hash"
+      else
+        echo "  [kept-local] ${file} (no install record; non-interactive: skipping)"
+        local_hash2="$(sha256 "$target")"
+        echo "${local_hash2}  ${file}" >> "$MANIFEST_FILE"
+        COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+        COUNT_CONFLICTS=$((COUNT_CONFLICTS + 1))
+      fi
+    fi
+
+  else
+    local_hash="$(sha256 "$target")"
+
+    if [ "$local_hash" = "$manifest_hash" ] && [ "$manifest_hash" = "$upstream_hash" ]; then
+      # Local == manifest == upstream: nothing changed
+      echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+      echo "  [unchanged]  ${file}"
+      COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+
+    elif [ "$local_hash" = "$manifest_hash" ] && [ "$manifest_hash" != "$upstream_hash" ]; then
+      # User hasn't touched it, upstream has a new version → auto-update
+      cp "$tmp_file" "$target"
+      echo "${upstream_hash}  ${file}" >> "$MANIFEST_FILE"
+      echo "  [updated]    ${file}"
+      COUNT_UPDATED=$((COUNT_UPDATED + 1))
+
+    elif [ "$local_hash" != "$manifest_hash" ] && [ "$manifest_hash" = "$upstream_hash" ]; then
+      # User modified locally, upstream unchanged → preserve local
+      echo "${local_hash}  ${file}" >> "$MANIFEST_FILE"
+      echo "  [kept-local] ${file} (local modifications preserved)"
+      COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+
+    else
+      # local != manifest AND upstream != manifest → both sides changed
+      if [ "$INTERACTIVE" = true ]; then
+        handle_conflict "$file" "$target" "$tmp_file" "$upstream_hash"
+      else
+        echo "  [conflict]   ${file} (non-interactive: keeping local)"
+        echo "${local_hash}  ${file}" >> "$MANIFEST_FILE"
+        COUNT_SKIPPED=$((COUNT_SKIPPED + 1))
+        COUNT_CONFLICTS=$((COUNT_CONFLICTS + 1))
+      fi
+    fi
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+echo ""
+echo "Done."
+echo "  Installed:  ${COUNT_INSTALLED}"
+echo "  Updated:    ${COUNT_UPDATED}"
+echo "  Unchanged:  ${COUNT_SKIPPED}"
+if [ "$COUNT_CONFLICTS" -gt 0 ]; then
+  echo "  Conflicts skipped (non-interactive): ${COUNT_CONFLICTS}"
+fi
+echo ""
+echo "Prerequisites:"
+echo "  Add to your environment or .claude/settings.json:"
+echo "    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
+echo ""
+echo "Usage:"
+echo "  /team <describe what you want to build>"
+echo ""
+echo "To update later, re-run the same install command."
