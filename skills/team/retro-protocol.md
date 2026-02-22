@@ -47,6 +47,7 @@ Where `${CLAUDE_SESSION_ID}` is the literal UUID already in the lead's context â
 - The deliberation log content (verbatim, pasted inline)
 - Contents of `.claude/retro-transcripts.txt` (pre-extracted transcripts for all participants, labeled by role)
 - The complete `{role: agentId}` map (read from `.claude/retro-session-agents.txt`)
+- The contents of `docs/review-YYYYMMDD-HHMMSS-[slug].md` (if it exists), under a `## Implementation Review` heading
 - These Phase 1 instructions:
 
 > You are facilitating Phase 1 of a team retrospective. Review the deliberation log and transcript excerpts provided. Return:
@@ -58,6 +59,8 @@ Where `${CLAUDE_SESSION_ID}` is the literal UUID already in the lead's context â
 > ### [Role]
 > **Q1:** [question]
 > > [1â€“2 sentence quote from their transcript]
+>
+> 3. **If an implementation review document is provided:** Note what went wrong during implementation, and assess what the planning phase (trifecta or alignment doc) should have caught but didn't. Were there architectural decisions that made implementation harder than necessary?
 >
 > All content you need is provided inline. Produce your analysis immediately and directly.
 
@@ -117,6 +120,12 @@ Lead spawns **retro-coordinator** again with:
 >
 > ## Retro Coordinator's Observations
 > [what the transcripts revealed beyond what the log shows]
+>
+> ## Implementation Quality
+> [What the explain-process reviews revealed â€” specific findings, not summaries.
+> What the trifecta or alignment doc should have anticipated but didn't.
+> Recommendations for planning better to avoid these issues next time.
+> Omit this section if no implementation review document was provided.]
 >
 > ## Recommendations for Next Time
 > [specific, actionable â€” for role definitions, prompts, or the protocol]
