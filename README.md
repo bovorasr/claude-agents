@@ -56,8 +56,8 @@ Agent teams are currently experimental and require a feature flag plus a bash pe
   },
   "permissions": {
     "allow": [
-      "!cat .claude/agents/:*",
-      "!cat .claude/skills/team/:*",
+      "Bash(cat .claude/agents/*.md:*)",
+      "Bash(cat .claude/skills/team/*.md:*)",
       "Bash(bash .claude/skills/team/retro-extractor.sh:*)",
       "Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"
     ]
@@ -69,14 +69,14 @@ Add this to `.claude/settings.json` in your project or `~/.claude/settings.json`
 
 | Permission | Used for |
 |---|---|
-| `!cat .claude/agents/:*` | Loading agent definition files at skill invocation |
-| `!cat .claude/skills/team/:*` | Loading worktree, trifecta, and retro-protocol files at skill invocation |
+| `Bash(cat .claude/agents/*.md:*)` | Loading agent definition files at skill invocation |
+| `Bash(cat .claude/skills/team/*.md:*)` | Loading worktree, trifecta, and retro-protocol files at skill invocation |
 | `Bash(bash .claude/skills/team/retro-extractor.sh:*)` | Running the transcript extraction script in the retrospective phase — exact script path |
 | `Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)` | Cleaning up exactly these two temp files after the retrospective completes |
 
 Tracking file writes and log prepending use the Read/Write tools — no additional Bash permissions needed.
 
-**If you have a `settings.local.json` with a custom `permissions.allow` list**, add `"Bash(cat:*)"` there as well — an explicit allow list in local settings takes precedence over the project `settings.json`.
+**If you have a `settings.local.json` with a custom `permissions.allow` list**, add the `Bash(cat ...)` entries there as well — an explicit allow list in local settings takes precedence over the project `settings.json`.
 
 ## Usage
 

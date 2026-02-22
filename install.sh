@@ -36,20 +36,20 @@ sha256() {
 }
 
 # Current required Bash permissions (scoped as tightly as possible):
-#   !cat .claude/agents/:*
+#   Bash(cat .claude/agents/*.md:*)
 #     — loads agent definition files at skill invocation
-#   !cat .claude/skills/team/:*
+#   Bash(cat .claude/skills/team/*.md:*)
 #     — loads worktree, trifecta, and retro-protocol files at skill invocation
-#   bash .claude/skills/team/retro-extractor.sh:*
+#   Bash(bash .claude/skills/team/retro-extractor.sh:*)
 #     — runs the retro transcript extraction script (exact script path)
-#   rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*
+#   Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)
 #     — cleans up exactly these two temp files after the retro completes
 #   Tracking file (init + append) and log prepend use Read/Write tools — no Bash needed.
-REQUIRED_PERMISSIONS='["!cat .claude/agents/:*","!cat .claude/skills/team/:*","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
+REQUIRED_PERMISSIONS='["Bash(cat .claude/agents/*.md:*)","Bash(cat .claude/skills/team/*.md:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
 
 # Permissions added by previous installer versions that are no longer needed.
 # Removed on every run so stale entries don't accumulate.
-STALE_PERMISSIONS='["Bash(cat:*)","Bash(cat .claude/:*)","Bash(!cat .claude/:*)","!cat .claude/:*","Bash(echo:*)","Bash(mv:*)","Bash(rm:*)","Bash(mv docs/trifecta-log-:*)","Bash(mv architecture/trifecta-log-:*)"]'
+STALE_PERMISSIONS='["Bash(cat:*)","Bash(cat .claude/:*)","Bash(!cat .claude/:*)","!cat .claude/:*","!cat .claude/agents/:*","!cat .claude/skills/team/:*","Bash(echo:*)","Bash(mv:*)","Bash(rm:*)","Bash(mv docs/trifecta-log-:*)","Bash(mv architecture/trifecta-log-:*)"]'
 
 # Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and required Bash permissions
 # into a settings.json file. Removes stale permissions from previous versions.
