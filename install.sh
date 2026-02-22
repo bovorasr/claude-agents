@@ -114,6 +114,23 @@ enable_flag() {
   fi
 }
 
+# Add .claude/retro-session-agents.txt to .gitignore in the project root.
+# Creates .gitignore if missing. Never removes existing entries.
+update_gitignore() {
+  local gitignore=".gitignore"
+  local entry=".claude/retro-session-agents.txt"
+  if [ -f "$gitignore" ] && grep -qxF "$entry" "$gitignore" 2>/dev/null; then
+    echo "  [gitignore]  ${entry} already present"
+    return
+  fi
+  # Ensure the new entry starts on its own line
+  if [ -f "$gitignore" ] && [ -s "$gitignore" ]; then
+    printf '\n' >> "$gitignore"
+  fi
+  printf '%s\n' "$entry" >> "$gitignore"
+  echo "  [gitignore]  ${gitignore}: added ${entry}"
+}
+
 # Detect TTY availability for interactive prompts
 if [ -c /dev/tty ]; then
   INTERACTIVE=true
@@ -361,6 +378,15 @@ fi
 echo ""
 echo "Configure /team requirements (experimental flag + Bash permissions):"
 enable_flag "${INSTALL_DIR}/settings.json" "${INSTALL_DIR}/settings.json"
+
+# ---------------------------------------------------------------------------
+# Step 5: Update .gitignore (local installs only)
+# ---------------------------------------------------------------------------
+if [ "$INSTALL_DIR" = "$(pwd)/.claude" ]; then
+  echo ""
+  echo "Updating .gitignore:"
+  update_gitignore
+fi
 
 echo ""
 echo "Usage:"
