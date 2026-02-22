@@ -28,6 +28,7 @@ This installs the following into `.claude/`:
 | `.claude/skills/team/retro-extractor.sh` | Shell script that extracts readable text from agent JSONL transcripts for retrospective input. |
 | `.claude/skills/team/worktree.md` | Worktree coordination protocol — MERGE_CONFLICT format, escalation rules, lead responsibilities. |
 | `.claude/skills/team/trifecta.md` | Trifecta deliberation protocol — deliberation loop, conflict templates, alignment doc format. |
+| `.claude/skills/team/review-protocol.md` | Post-implementation review protocol — explain-process framework, architect review format, escalation rules. |
 
 ## Design
 
@@ -92,8 +93,9 @@ The lead orchestrator will:
 3. Ask for your approval before spawning any agents
 4. Spawn teammates with worktree isolation so they work in parallel without stepping on each other
 5. Handle merge conflicts via the merge-specialist if parallel changes collide
-6. Run a retrospective after all work is complete (Step 8)
-7. Report back when complete
+6. Run a post-implementation review after all agents complete (Step 7)
+7. Run a retrospective (Step 8)
+8. Report back when complete
 
 ## Trifecta
 
@@ -122,6 +124,42 @@ The lead presents the alignment document to you and asks for approval before spa
 ### What alignment means
 
 Alignment is reached when each role's primary concern is addressed — accommodated, traded off with explicit reasoning, or logged as deferred — and no role has a blocking objection. It is not full agreement, not the architect's technical ideal, not the PO's minimum viable scope, and not the UX's perfect flow.
+
+## Post-Implementation Review
+
+After all implementation agents report done, the lead runs a **post-implementation review** (Step 7) before the retrospective.
+
+### What it does
+
+Every implementation agent produces an **explain-process report** as part of their completion report — not after the fact, but as a required deliverable. Each report covers:
+- What went wrong (including "fixed" issues)
+- Workarounds and shortcuts taken, and why
+- Claims vs. reality (any rationalizations)
+- Technical debt introduced
+- Breaking changes or unverified assumptions
+- An honest overall assessment
+
+The lead then spawns the architect with all explain-process reports and the alignment document. The architect returns a **severity rating** (green / yellow / red) and specific concerns.
+
+### Escalation
+
+| Architect verdict | Action |
+|---|---|
+| Green | Write review doc, proceed to retro |
+| Yellow / red | Lead orchestrates a targeted fix round per concern |
+| After fix round: cleared | Write review doc, proceed to retro |
+| After fix round: still failing | Architect re-spawned with implementation authorization to fix it directly |
+| Concern flagged as fundamental | Lead reconvenes trifecta before implementation continues |
+
+One fix round maximum before escalation. The lead does not loop indefinitely.
+
+### What it produces
+
+`docs/review-YYYYMMDD-HHMMSS-[slug].md` — the architect's review, written with the Write tool. This file is passed to the retro-coordinator in Phase 1 so the retrospective can assess what the planning phase should have caught.
+
+For **Category C tasks** (mechanical, no trifecta): Step 7 still runs, but trifecta escalation is skipped if a concern is flagged as fundamental — it is logged in the review doc instead.
+
+---
 
 ## Retrospective
 
@@ -237,6 +275,7 @@ bovorasr/claude-agents/
 │   └── team/
 │       ├── SKILL.md             # /team orchestrator
 │       ├── retro-protocol.md    # Retrospective protocol
+│       ├── review-protocol.md   # Post-implementation review protocol
 │       ├── retro-extractor.sh   # Transcript extraction script
 │       ├── worktree.md          # Coordination protocol
 │       └── trifecta.md          # Trifecta deliberation protocol

@@ -15,6 +15,7 @@ FILES=(
   "agents/merge-specialist.md"
   "skills/team/SKILL.md"
   "skills/team/retro-protocol.md"
+  "skills/team/review-protocol.md"
   "skills/team/retro-extractor.sh"
   "skills/team/worktree.md"
   "skills/team/trifecta.md"

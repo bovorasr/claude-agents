@@ -24,6 +24,10 @@ The retrospective protocol is:
 
 !`cat .claude/skills/team/retro-protocol.md`
 
+The post-implementation review protocol is:
+
+!`cat .claude/skills/team/review-protocol.md`
+
 ---
 
 ## Initialization (before Step 0)
@@ -92,13 +96,29 @@ Before any implementation planning, classify the user's request into one of thre
 
 4. **Require plan approval per teammate.** Each teammate should present their implementation plan before writing code. You approve or redirect before they proceed.
 
-5. **Monitor for MERGE_CONFLICT.** If any teammate sends a MERGE_CONFLICT message:
+5. **Include the explain-process framework in every implementation agent's spawn payload.** Append the Explain-Process Framework from `review-protocol.md` verbatim to the "before reporting done" section of every implementation agent's task. This is a required part of their deliverable — not optional, not post-hoc.
+
+6. **Monitor for MERGE_CONFLICT.** If any teammate sends a MERGE_CONFLICT message:
    - Acknowledge it immediately
    - Spawn the merge-specialist with both sets of conflicting changes
    - Relay the resolved output back to the blocked teammate
    - Tell the blocked teammate to resume
 
-6. **No nested teams.** Teammates do not spawn their own teams. If a teammate's task grows beyond their role, they report back to you and you re-plan.
+7. **No nested teams.** Teammates do not spawn their own teams. If a teammate's task grows beyond their role, they report back to you and you re-plan.
+
+---
+
+## Step 7: Post-Implementation Review
+
+After all implementation agents report done, before the retrospective, run the post-implementation review per `review-protocol.md`:
+
+1. Collect the explain-process reports from each agent's completion text (they are embedded in the "Implementation Review" section of each agent's final response).
+2. Spawn the architect with all reports + alignment document content inline, using the architect review instructions from `review-protocol.md`.
+3. Handle concerns and escalations per the escalation rules in `review-protocol.md`.
+4. Use the Write tool to save the architect's final review as `docs/review-YYYYMMDD-HHMMSS-[slug].md` (same slug as the alignment doc).
+5. Proceed to Step 8.
+
+This step is **non-blocking** for Category C tasks (no trifecta, mechanical changes): still collect reports and have the architect review, but skip trifecta escalation if a concern is flagged as fundamental.
 
 ---
 
