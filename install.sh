@@ -32,6 +32,56 @@ sha256() {
   fi
 }
 
+# Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 into a settings.json file.
+# Uses jq if available; creates a fresh file without it; prints manual
+# instructions if jq is missing and the file already exists.
+write_flag() {
+  local settings_file="$1"
+  local dir
+  dir="$(dirname "$settings_file")"
+  if command -v jq >/dev/null 2>&1; then
+    mkdir -p "$dir"
+    if [ -f "$settings_file" ]; then
+      local tmp
+      tmp="$(mktemp)"
+      jq '.env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"' "$settings_file" > "$tmp"
+      mv "$tmp" "$settings_file"
+    else
+      printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  }\n}\n' > "$settings_file"
+    fi
+    echo "  [flag set]   ${settings_file}"
+  elif [ ! -f "$settings_file" ]; then
+    mkdir -p "$dir"
+    printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  }\n}\n' > "$settings_file"
+    echo "  [flag set]   ${settings_file}"
+  else
+    echo "  [jq missing] Add this to ${settings_file} manually:"
+    echo '               "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"}'
+  fi
+}
+
+# Prompt the user to enable the flag in a given settings.json, unless it's
+# already present. Skips the prompt (prints manual instructions) when
+# non-interactive.
+enable_flag() {
+  local settings_file="$1"
+  local label="$2"
+  if [ -f "$settings_file" ] && grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null; then
+    echo "  [flag set]   already enabled in ${label}"
+    return
+  fi
+  if [ "$INTERACTIVE" = true ]; then
+    printf "  Enable CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS in %s? [y/N] " "$label"
+    read -r _flag_answer < /dev/tty
+    case "$_flag_answer" in
+      y|Y|yes|YES) write_flag "$settings_file" ;;
+      *) echo "  [skipped]    add manually: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1" ;;
+    esac
+  else
+    echo "  [manual]     add to ${settings_file}: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
+  fi
+}
+
 # Detect TTY availability for interactive prompts
 if [ -c /dev/tty ]; then
   INTERACTIVE=true
@@ -42,33 +92,42 @@ fi
 # ---------------------------------------------------------------------------
 # Determine install directory — project (.claude/) or global (~/.claude/)
 # ---------------------------------------------------------------------------
-GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
-
-if [ -n "$GIT_ROOT" ]; then
-  INSTALL_DIR="${GIT_ROOT}/.claude"
-  echo "Project: ${GIT_ROOT}"
+if [ -d ".claude" ]; then
+  INSTALL_DIR="$(pwd)/.claude"
+  echo "Found .claude/ in current directory."
   echo "Installing into: ${INSTALL_DIR}/"
   echo ""
 else
-  echo "No git project detected in the current directory."
+  echo "No .claude/ directory found in the current directory."
   echo ""
   if [ "$INTERACTIVE" = true ]; then
-    printf "Install globally to ~/.claude/ instead? [y/N] "
-    read -r _global_answer < /dev/tty
-    case "$_global_answer" in
+    printf "  Create .claude/ here and install? [y/N] "
+    read -r _here_answer < /dev/tty
+    case "$_here_answer" in
       y|Y|yes|YES)
-        INSTALL_DIR="${HOME}/.claude"
-        echo "Installing into: ${INSTALL_DIR}/"
+        INSTALL_DIR="$(pwd)/.claude"
+        echo "  Installing into: ${INSTALL_DIR}/"
         echo ""
         ;;
       *)
-        echo "Aborted. Run this installer from inside a project directory."
-        exit 0
+        printf "  Install globally to ~/.claude/ instead? [y/N] "
+        read -r _global_answer < /dev/tty
+        case "$_global_answer" in
+          y|Y|yes|YES)
+            INSTALL_DIR="${HOME}/.claude"
+            echo "  Installing into: ${INSTALL_DIR}/"
+            echo ""
+            ;;
+          *)
+            echo "  Aborted."
+            exit 0
+            ;;
+        esac
         ;;
     esac
   else
-    echo "ERROR: Not in a git project and no TTY available for prompting." >&2
-    echo "Run this installer from inside your project directory." >&2
+    echo "ERROR: No .claude/ directory found and no TTY available for prompting." >&2
+    echo "Create a .claude/ directory first, or run the installer interactively." >&2
     exit 1
   fi
 fi
@@ -263,10 +322,14 @@ echo "  Unchanged:  ${COUNT_SKIPPED}"
 if [ "$COUNT_CONFLICTS" -gt 0 ]; then
   echo "  Conflicts skipped (non-interactive): ${COUNT_CONFLICTS}"
 fi
+
+# ---------------------------------------------------------------------------
+# Step 4: Offer to enable the required environment flag
+# ---------------------------------------------------------------------------
 echo ""
-echo "Prerequisites:"
-echo "  Add to your environment or ${INSTALL_DIR}/settings.json:"
-echo "    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
+echo "Enable experimental agent teams flag:"
+enable_flag "${INSTALL_DIR}/settings.json" "${INSTALL_DIR}/settings.json"
+
 echo ""
 echo "Usage:"
 echo "  /team <describe what you want to build>"

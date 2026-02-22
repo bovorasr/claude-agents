@@ -10,7 +10,7 @@ From inside a project directory:
 curl -fsSL https://raw.githubusercontent.com/bovorasr/claude-agents/main/install.sh | bash
 ```
 
-The installer detects your git project root and installs into its `.claude/` directory. If you run it outside a git project, it will prompt before installing into `~/.claude/` (your global Claude config) instead. In a non-interactive environment with no project detected, it exits with an error rather than silently installing globally.
+If the current directory already has a `.claude/` folder, the installer uses it — no questions asked. If not, it asks whether to create `.claude/` here or install into `~/.claude/` (your global Claude config) instead. Either way, it then asks whether to enable the required feature flag in the same `settings.json`. In a non-interactive environment with no `.claude/` present, it exits with an error rather than guessing.
 
 This installs the following into `.claude/`:
 
@@ -44,13 +44,7 @@ This separation means you can freely customize an agent's character (how it reas
 
 ## Prerequisites
 
-Agent teams are currently experimental. Enable the feature by setting the environment variable:
-
-```bash
-export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-```
-
-Or add it to your project's `.claude/settings.json`:
+Agent teams are currently experimental and require a feature flag. The installer will prompt you to add it — but if you need to set it manually:
 
 ```json
 {
@@ -59,6 +53,8 @@ Or add it to your project's `.claude/settings.json`:
   }
 }
 ```
+
+Add this to `.claude/settings.json` in your project, `~/.claude/settings.json` for all projects, or export `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your shell.
 
 ## Usage
 
