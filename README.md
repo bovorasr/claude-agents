@@ -22,7 +22,7 @@ This installs the following into `.claude/`:
 | `.claude/agents/ux.md` | User experience advocate — flows, mental models, edge cases from a user perspective. Never writes code. |
 | `.claude/agents/senior-dev.md` | Completes tested changes. Reads existing code first, matches style, runs tests before done. |
 | `.claude/agents/junior-dev.md` | Precise task executor. Good at repetitive/scoped work. Flags ambiguity instead of improvising. |
-| `.claude/agents/merge-specialist.md` | Classifies and resolves merge conflicts. Escalates contradictory conflicts with structured reports. |
+| `.claude/agents/git-specialist.md` | Handles all git operations — merge conflict resolution, branch integration (squash-merge into single commit), worktree cleanup, and any git problem the lead delegates. |
 | `.claude/skills/team/SKILL.md` | The `/team` slash command — orchestrates the other agents. |
 | `.claude/skills/team/retro-protocol.md` | Retrospective protocol — three-phase retro flow, transcript extraction, prepend pattern. |
 | `.claude/skills/team/retro-extractor.sh` | Shell script that extracts readable text from agent JSONL transcripts for retrospective input. |
@@ -92,10 +92,11 @@ The lead orchestrator will:
 2. Write a plan (roles, work breakdown, integration points)
 3. Ask for your approval before spawning any agents
 4. Spawn teammates with worktree isolation so they work in parallel without stepping on each other
-5. Handle merge conflicts via the merge-specialist if parallel changes collide
+5. Handle merge conflicts via the git-specialist if parallel changes collide
 6. Run a post-implementation review after all agents complete (Step 7)
-7. Run a retrospective (Step 8)
-8. Report back when complete
+7. Integrate all worktree branches into a single clean commit and clean up
+8. Run a retrospective (Step 8)
+9. Report back when complete
 
 ## Trifecta
 
@@ -252,12 +253,11 @@ The manifest file (`.claude/.agent-team-manifest`) tracks which version of each 
 
 ## How Worktree Isolation Works
 
-The `/team` skill injects `isolation: worktree` when spawning each teammate. This is a native Claude Code field — Claude Code automatically:
-- Creates a unique worktree directory for each agent
-- Gives each agent an isolated working environment
-- Cleans up worktrees on session exit
+The `/team` skill injects `isolation: worktree` when spawning each teammate. This is a native Claude Code field — Claude Code automatically creates a unique worktree directory for each agent and gives each agent an isolated working environment.
 
-Agents do not need to manage git worktrees manually. The `worktree.md` protocol file covers only the communication layer (MERGE_CONFLICT messages, escalation rules).
+After implementation and review are complete, the lead spawns the **git-specialist** to integrate all worktree branches into a single clean commit on main, then remove every worktree and delete every branch. The end result is one commit — the worktrees are a transparent implementation detail.
+
+Agents do not manage git worktrees manually. The `worktree.md` protocol file covers the communication layer (MERGE_CONFLICT messages, escalation rules).
 
 ## Repository Structure
 
@@ -270,7 +270,7 @@ bovorasr/claude-agents/
 │   ├── ux.md
 │   ├── senior-dev.md
 │   ├── junior-dev.md
-│   └── merge-specialist.md
+│   └── git-specialist.md
 ├── skills/                      # Slash command definitions
 │   └── team/
 │       ├── SKILL.md             # /team orchestrator

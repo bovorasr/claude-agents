@@ -1,6 +1,6 @@
 # Worktree Coordination Protocol
 
-This document defines the coordination protocol for agents working in parallel with worktree isolation. Native `isolation: worktree` (a built-in Claude Code field) handles directory creation, unique naming, and cleanup automatically — this protocol covers only the communication layer.
+This document defines the coordination protocol for agents working in parallel with worktree isolation. Native `isolation: worktree` (a built-in Claude Code field) handles directory creation and unique naming. The lead handles integration and cleanup by spawning the git-specialist after implementation and review are complete.
 
 ---
 
@@ -50,14 +50,14 @@ Status: BLOCKED — awaiting merge resolution before continuing
 When a MERGE_CONFLICT message arrives:
 
 1. **Acknowledge** — reply to the blocked agent that you received it
-2. **Spawn merge-specialist** — delegate the conflict files with both sets of changes
-3. **Relay resolution** — once merge-specialist produces a resolved version, send it to the blocked agent with instructions to apply it and continue
+2. **Spawn git-specialist** — delegate the conflict files with both sets of changes
+3. **Relay resolution** — once git-specialist produces a resolved version, send it to the blocked agent with instructions to apply it and continue
 4. **Resume teammate** — explicitly tell the blocked agent to un-block and resume
 
-The lead does not resolve merge conflicts directly. That is the merge-specialist's role.
+The lead does not resolve merge conflicts directly. That is the git-specialist's role.
 
 ---
 
-## No Manual Git Commands
+## Worktree Lifecycle
 
-Do not run `git worktree add`, `git worktree remove`, or manual branch management commands. The native `isolation: worktree` field handles the full worktree lifecycle — creation, unique path generation, and cleanup on session exit. Manual commands will conflict with this management.
+Worktree creation and directory setup is handled automatically by `isolation: worktree` when the lead spawns you. Do not run `git worktree add`, `git worktree remove`, or manual branch management commands yourself — the lead spawns the git-specialist to handle all integration and cleanup after implementation and review are complete.
