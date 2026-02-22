@@ -35,11 +35,7 @@ sha256() {
   fi
 }
 
-# Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and required Bash permissions
-# into a settings.json file. Uses jq if available; creates a fresh file without
-# it; prints manual instructions if jq is missing and the file already exists.
-#
-# Required Bash permissions (scoped as tightly as possible to actual usage):
+# Current required Bash permissions (scoped as tightly as possible):
 #   !cat .claude/:*
 #     — !cat inline commands in SKILL.md load agent/protocol files from .claude/
 #   bash .claude/skills/team/retro-extractor.sh:*
@@ -49,6 +45,14 @@ sha256() {
 #   Tracking file (init + append) and log prepend use Read/Write tools — no Bash needed.
 REQUIRED_PERMISSIONS='["Bash(!cat .claude/:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
 
+# Permissions added by previous installer versions that are no longer needed.
+# Removed on every run so stale entries don't accumulate.
+STALE_PERMISSIONS='["Bash(cat:*)","Bash(cat .claude/:*)","Bash(echo:*)","Bash(mv:*)","Bash(rm:*)","Bash(mv docs/trifecta-log-:*)","Bash(mv architecture/trifecta-log-:*)"]'
+
+# Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and required Bash permissions
+# into a settings.json file. Removes stale permissions from previous versions.
+# Uses jq if available; creates a fresh file without it; prints manual
+# instructions if jq is missing and the file already exists.
 write_flag() {
   local settings_file="$1"
   local dir
@@ -58,9 +62,11 @@ write_flag() {
     if [ -f "$settings_file" ]; then
       local tmp
       tmp="$(mktemp)"
-      jq --argjson perms "$REQUIRED_PERMISSIONS" \
+      jq --argjson perms "$REQUIRED_PERMISSIONS" --argjson stale "$STALE_PERMISSIONS" \
         '.env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1" |
-         .permissions.allow = ((.permissions.allow // []) + $perms | unique)' \
+         .permissions.allow = (
+           ((.permissions.allow // []) | map(select(. as $p | ($stale | index($p)) == null)))
+           + $perms | unique)' \
         "$settings_file" > "$tmp"
       mv "$tmp" "$settings_file"
     else
@@ -78,19 +84,19 @@ write_flag() {
   fi
 }
 
-# Prompt the user to enable the flag + permission in a given settings.json,
-# unless both are already present. Skips the prompt when non-interactive.
+# Configure the flag + permissions in a given settings.json.
+# If the flag is not yet set, prompt the user first.
+# If the flag is already set, silently update permissions (re-runs are safe).
 enable_flag() {
   local settings_file="$1"
   local label="$2"
-  local has_flag=false has_perm=false
-  if [ -f "$settings_file" ]; then
-    grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null && has_flag=true
-    # Check for the retro-extractor permission as a proxy for all required permissions
-    grep -qF 'retro-extractor.sh' "$settings_file" 2>/dev/null && has_perm=true
+  local has_flag=false
+  if [ -f "$settings_file" ] && grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null; then
+    has_flag=true
   fi
-  if [ "$has_flag" = true ] && [ "$has_perm" = true ]; then
-    echo "  [set]        already configured in ${label}"
+  if [ "$has_flag" = true ]; then
+    # Flag already set — silently update permissions to the current required set
+    write_flag "$settings_file"
     return
   fi
   if [ "$INTERACTIVE" = true ]; then
