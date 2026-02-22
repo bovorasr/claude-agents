@@ -100,7 +100,7 @@ Before any implementation planning, classify the user's request into one of thre
 
 6. **Monitor for MERGE_CONFLICT.** If any teammate sends a MERGE_CONFLICT message:
    - Acknowledge it immediately
-   - Spawn the merge-specialist with both sets of conflicting changes
+   - Spawn the git-specialist with both sets of conflicting changes
    - Relay the resolved output back to the blocked teammate
    - Tell the blocked teammate to resume
 
@@ -116,9 +116,15 @@ After all implementation agents report done, before the retrospective, run the p
 2. Spawn the architect with all reports + alignment document content inline, using the architect review instructions from `review-protocol.md`.
 3. Handle concerns and escalations per the escalation rules in `review-protocol.md`.
 4. Use the Write tool to save the architect's final review as `docs/review-YYYYMMDD-HHMMSS-[slug].md` (same slug as the alignment doc).
-5. Proceed to Step 8.
+5. **Integrate and clean up.** Spawn the git-specialist with:
+   - A one-line summary of what was built (for the commit message)
+   - The list of worktree branches to integrate (from `git worktree list`)
+   - Instructions to squash-merge all branches into a single commit on main, then remove every worktree and delete every branch per the Branch Integration process in the git-specialist's role definition
 
-This step is **non-blocking** for Category C tasks (no trifecta, mechanical changes): still collect reports and have the architect review, but skip trifecta escalation if a concern is flagged as fundamental.
+   The result: one clean commit on main, no leftover worktrees or branches.
+6. Proceed to Step 8.
+
+This step is **non-blocking** for Category C tasks (no trifecta, mechanical changes): still collect reports and have the architect review, but skip trifecta escalation if a concern is flagged as fundamental. Integration (step 5) always runs.
 
 ---
 

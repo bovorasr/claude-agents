@@ -12,7 +12,7 @@ FILES=(
   "agents/ux.md"
   "agents/senior-dev.md"
   "agents/junior-dev.md"
-  "agents/merge-specialist.md"
+  "agents/git-specialist.md"
   "skills/team/SKILL.md"
   "skills/team/retro-protocol.md"
   "skills/team/review-protocol.md"
@@ -358,6 +358,21 @@ for file in "${FILES[@]}"; do
         COUNT_CONFLICTS=$((COUNT_CONFLICTS + 1))
       fi
     fi
+  fi
+done
+
+# ---------------------------------------------------------------------------
+# Step 3b: Remove deprecated files from previous versions
+# ---------------------------------------------------------------------------
+DEPRECATED_FILES=(
+  "agents/merge-specialist.md"
+)
+
+for file in "${DEPRECATED_FILES[@]}"; do
+  target="${INSTALL_DIR}/${file}"
+  if [ -f "$target" ]; then
+    rm "$target"
+    echo "  [removed]    ${file} (renamed/deprecated)"
   fi
 done
 
