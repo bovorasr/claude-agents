@@ -24,6 +24,22 @@ This installs the following into `.claude/`:
 | `.claude/skills/team/worktree.md` | Worktree coordination protocol — MERGE_CONFLICT format, escalation rules, lead responsibilities. |
 | `.claude/skills/team/trifecta.md` | Trifecta deliberation protocol — deliberation loop, conflict templates, alignment doc format. |
 
+## Design
+
+Two ideas drive the structure of this repo.
+
+**One definition, two uses.** The files in `agents/` are standard Claude Code subagent definitions — Claude Code picks them up natively from `.claude/agents/` and makes them available as `@architect`, `@senior-dev`, etc. The `/team` skill uses those exact same files when it spawns team members. There's no separate "team version" of each role; the same markdown that defines the standalone subagent is what gets injected into the orchestrated team. You get both capabilities from a single set of definitions.
+
+**Role definitions are context-agnostic. Coordination logic is separate.** Each agent file describes *who the agent is* — its character, professional concerns, model, tools, and what it will and won't do. It says nothing about the `/team` command, trifecta rounds, or MERGE_CONFLICT messages.
+
+What's team-specific lives in the protocol documents under `skills/team/`:
+- `trifecta.md` — how the planning deliberation runs: round formats, conflict templates, the alignment doc structure
+- `worktree.md` — how parallel implementation agents coordinate: the MERGE_CONFLICT message format, escalation rules
+
+The lead injects these protocol docs into agents' spawn payloads at the right moment. An architect working in a trifecta gets the Round 1 format instructions added to its context; an architect invoked standalone gets none of that. Same agent definition, different context, appropriate behavior in both cases.
+
+This separation means you can freely customize an agent's character (how it reasons, what it prioritizes, how assertive it is) without touching the coordination machinery — and you can evolve the coordination protocol without touching the agent definitions.
+
 ## Prerequisites
 
 Agent teams are currently experimental. Enable the feature by setting the environment variable:
@@ -96,11 +112,44 @@ Re-run the same install command. The installer tracks a manifest at `.claude/.ag
 
 In a CI or non-interactive environment, conflicts default to keeping your local version.
 
-## Customizing Agent Definitions
+## Customizing and Creating Agents
 
-The agent files in `.claude/agents/` are plain markdown. Edit them directly to adjust behavior, tools, models, or permission modes.
+These agents are a starting point, not a fixed roster. Modify the ones that ship here, add your own, or both.
 
-After customizing, the manifest records your local hash. If upstream changes, the installer will detect the conflict and prompt you rather than silently overwriting.
+**Modifying existing agents.** The files in `.claude/agents/` are plain markdown. Edit them directly — tighten a system prompt, swap the model, adjust the tool list, change the permission mode. The manifest records your local hash so upstream updates won't silently overwrite your customizations.
+
+**Adding new agents.** Create a new `.claude/agents/your-role.md` file with the standard frontmatter:
+
+```markdown
+---
+model: claude-sonnet-4-6
+permissionMode: plan
+tools:
+  - Read
+  - Write
+  - Grep
+---
+
+Your system prompt here.
+```
+
+Claude Code will automatically pick it up as a standalone subagent (`@your-role`). The `/team` skill loads all files matching `.claude/agents/*.md`, so your new agent is available to the orchestrator immediately — no other configuration needed.
+
+**What belongs in an agent definition — and what doesn't.**
+
+Agent files are shared. The same file is used when you invoke `@architect` directly and when `/team` spawns an architect inside the trifecta. This is intentional, and it means agent definitions should stay context-agnostic.
+
+Put in the agent file:
+- The role's professional character and point of view
+- What it produces and what it refuses to do
+- Model, permission mode, and tool access
+
+Keep out of the agent file:
+- References to `/team`, the trifecta, or worktree coordination
+- Instructions about what format to use in Round 1 vs Round 2
+- Any behavior that only makes sense inside the orchestrated team workflow
+
+That coordination logic lives in `skills/team/trifecta.md` and `skills/team/worktree.md`. The lead injects the relevant parts into an agent's context at spawn time. If you embed team-specific instructions directly in an agent file, they'll show up in standalone invocations where they don't belong and will confuse the agent's behavior outside the team context.
 
 ## Manifest and Source Control
 
