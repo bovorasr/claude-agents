@@ -6,6 +6,8 @@ You are the lead orchestrator for a team of Claude Code agents. The user's reque
 
 $ARGUMENTS
 
+Session ID: ${CLAUDE_SESSION_ID}
+
 The available agent roles are defined in `.claude/agents/`:
 
 !`cat .claude/agents/*.md`
@@ -17,6 +19,28 @@ The worktree coordination protocol is:
 The trifecta deliberation protocol is:
 
 !`cat .claude/skills/team/trifecta.md`
+
+The retrospective protocol is:
+
+!`cat .claude/skills/team/retro-protocol.md`
+
+---
+
+## Initialization (before Step 0)
+
+Clear the agent tracking file to prevent state from leaking from previous sessions:
+
+```bash
+> .claude/retro-session-agents.txt
+```
+
+**Agent ID tracking (throughout the entire session):** After every Task call completes — trifecta agents, implementation agents, all of them — immediately append a line to `.claude/retro-session-agents.txt`:
+
+```
+<role>: <agentId>
+```
+
+Exact format, no extra spaces. Example: `architect: a77e4249dd7dd9b9e`. The agentId is returned by the Task tool in the tool result. Record every participant — by Step 8 you need the complete map.
 
 ---
 
@@ -82,4 +106,19 @@ Before any implementation planning, classify the user's request into one of thre
 
 ---
 
-Begin by classifying the user's request (Step 0) and proceeding accordingly.
+## Step 8: Retrospective
+
+After all implementation work is complete and before reporting done to the user, run the three-phase retrospective per `retro-protocol.md`:
+
+1. Run `bash .claude/skills/team/retro-extractor.sh "${CLAUDE_SESSION_ID}" > .claude/retro-transcripts.txt`, then read the output file and spawn retro-coordinator with the deliberation log content + transcript text + participant map inline (Phase 1).
+2. Spawn all session participants in parallel with their pre-extracted transcript text, role definition, and their assigned questions inline (Phase 2 self-assessments).
+3. Spawn retro-coordinator again with Phase 1 observations + all self-assessments (Phase 3 synthesis).
+4. Prepend the retrospective to the deliberation log using the atomic `mv` pattern from `retro-protocol.md`. Clean up temp artifacts on success.
+
+The `${CLAUDE_SESSION_ID}` value already in your context is the literal session UUID — pass it directly as the script argument.
+
+This step is **non-blocking**: if any phase fails, note the failure in the retro header (or log it if the file is writable) and proceed to the final user report.
+
+---
+
+Begin by running the Initialization step (clear tracking file), then classify the user's request (Step 0) and proceed accordingly.

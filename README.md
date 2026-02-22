@@ -18,11 +18,14 @@ This installs the following into `.claude/`:
 |------|-------------|
 | `.claude/agents/architect.md` | Systems thinker — design docs, interfaces, trade-off analyses. Never writes implementation code. |
 | `.claude/agents/product-owner.md` | Delivery advocate — prioritizes user value, challenges scope, pushes for the minimum useful slice. Never writes code. |
+| `.claude/agents/retro-coordinator.md` | Retrospective facilitator — analyzes session transcripts, synthesizes observations, produces actionable feedback. Only invoked at session end. |
 | `.claude/agents/ux.md` | User experience advocate — flows, mental models, edge cases from a user perspective. Never writes code. |
 | `.claude/agents/senior-dev.md` | Completes tested changes. Reads existing code first, matches style, runs tests before done. |
 | `.claude/agents/junior-dev.md` | Precise task executor. Good at repetitive/scoped work. Flags ambiguity instead of improvising. |
 | `.claude/agents/merge-specialist.md` | Classifies and resolves merge conflicts. Escalates contradictory conflicts with structured reports. |
 | `.claude/skills/team/SKILL.md` | The `/team` slash command — orchestrates the other agents. |
+| `.claude/skills/team/retro-protocol.md` | Retrospective protocol — three-phase retro flow, transcript extraction, prepend pattern. |
+| `.claude/skills/team/retro-extractor.sh` | Shell script that extracts readable text from agent JSONL transcripts for retrospective input. |
 | `.claude/skills/team/worktree.md` | Worktree coordination protocol — MERGE_CONFLICT format, escalation rules, lead responsibilities. |
 | `.claude/skills/team/trifecta.md` | Trifecta deliberation protocol — deliberation loop, conflict templates, alignment doc format. |
 
@@ -70,7 +73,8 @@ The lead orchestrator will:
 3. Ask for your approval before spawning any agents
 4. Spawn teammates with worktree isolation so they work in parallel without stepping on each other
 5. Handle merge conflicts via the merge-specialist if parallel changes collide
-6. Report back when complete
+6. Run a retrospective after all work is complete (Step 8)
+7. Report back when complete
 
 ## Trifecta
 
@@ -99,6 +103,38 @@ The lead presents the alignment document to you and asks for approval before spa
 ### What alignment means
 
 Alignment is reached when each role's primary concern is addressed — accommodated, traded off with explicit reasoning, or logged as deferred — and no role has a blocking objection. It is not full agreement, not the architect's technical ideal, not the PO's minimum viable scope, and not the UX's perfect flow.
+
+## Retrospective
+
+After all implementation work is complete, the lead automatically runs a **three-phase retrospective** before reporting done — like a real sprint retro, not mid-process.
+
+### What it produces
+
+A retrospective prepended to the top of the deliberation log (`docs/trifecta-log-*.md`), with the original log preserved below a `---` separator. The retrospective covers:
+
+- What went well (specific behaviors, not generalities)
+- What didn't work (specific failures with transcript examples)
+- Agent self-assessments (each participant reflects on their own participation)
+- Retro coordinator's observations (what the transcripts revealed beyond the log)
+- Recommendations for next time (actionable — for role definitions, prompts, or the protocol)
+
+### How it works
+
+Three sequential phases run after implementation, orchestrated by the lead:
+
+1. **Phase 1:** The lead extracts readable text from all agent transcripts (`retro-extractor.sh`), then spawns the retro-coordinator with the deliberation log + transcript excerpts inline. The coordinator returns preliminary observations and targeted questions per participant.
+
+2. **Phase 2:** The lead spawns all session participants in parallel. Each receives their own pre-extracted transcript text, their role definition, and the coordinator's questions — inline, not as file paths. Each returns a self-assessment (≤ 300 words).
+
+3. **Phase 3:** The lead spawns the retro-coordinator again with the Phase 1 observations and all self-assessments. The coordinator returns the final retrospective (≤ 800 words), which the lead atomically prepends to the deliberation log.
+
+The retrospective is **non-blocking** — if any phase fails, the failure is noted and the session concludes normally.
+
+### Why it matters
+
+Run a trial, read the retro, improve role definitions and protocols, repeat. The retrospective is the feedback loop for iterating on the team itself.
+
+---
 
 ## Updating
 
@@ -173,6 +209,7 @@ bovorasr/claude-agents/
 ├── agents/                      # Agent role definitions
 │   ├── architect.md
 │   ├── product-owner.md
+│   ├── retro-coordinator.md     # Retrospective facilitator
 │   ├── ux.md
 │   ├── senior-dev.md
 │   ├── junior-dev.md
@@ -180,6 +217,8 @@ bovorasr/claude-agents/
 ├── skills/                      # Slash command definitions
 │   └── team/
 │       ├── SKILL.md             # /team orchestrator
+│       ├── retro-protocol.md    # Retrospective protocol
+│       ├── retro-extractor.sh   # Transcript extraction script
 │       ├── worktree.md          # Coordination protocol
 │       └── trifecta.md          # Trifecta deliberation protocol
 ├── install.sh                   # This installer

@@ -101,20 +101,105 @@ After Round 3, remaining tensions are logged as tracked risks — they do not bl
 
 ---
 
+## Deliberation Log
+
+Before writing the alignment document, write a **deliberation log** to the same directory. This is the raw record of what each agent actually said — preserved verbatim for debugging and iteration.
+
+> **Note:** At the end of the session (Step 8), the lead prepends a **Trifecta Retrospective** to this file. The retrospective is written above the log content, separated by `---`. The original log is unchanged.
+
+**Filename:** `docs/trifecta-log-YYYYMMDD-HHMMSS-[slug].md` (same timestamp and slug as the alignment doc).
+
+**Format:**
+
+```
+TRIFECTA DELIBERATION LOG
+Feature: <slug>
+Date: YYYY-MM-DD HH:MM:SS
+Category: A / B / C
+
+Agent transcripts (subagents/ directory of this session):
+  Architect:     agent-<id returned by Task tool>.jsonl
+  Product Owner: agent-<id returned by Task tool>.jsonl
+  UX:            agent-<id returned by Task tool>.jsonl
+
+---
+
+## Request
+
+<the user's request verbatim>
+
+---
+
+## Round 1 — Initial Positions
+
+### Architect
+<paste response verbatim>
+
+### Product Owner
+<paste response verbatim>
+
+### UX
+<paste response verbatim>
+
+---
+
+## Conflict Brief (sent to Round 2)
+
+<paste the CONFLICT BRIEF verbatim, or "N/A — all agents agreed / Category B all-No">
+
+---
+
+## Round 2 — Cross-Examination
+(omit section if Round 2 was not run)
+
+### Architect
+<paste response verbatim>
+
+### Product Owner
+<paste response verbatim>
+
+### UX
+<paste response verbatim>
+
+---
+
+## Round 3 — Resolution
+(omit section if Round 3 was not run)
+
+### Architect
+<paste response verbatim>
+
+### Product Owner
+<paste response verbatim>
+
+### UX
+<paste response verbatim>
+
+---
+
+## Lead Synthesis Notes
+
+<1–3 sentences: what the lead observed about the deliberation — where the real tensions were, what drove the alignment decisions, anything notable about agent behavior>
+```
+
+The deliberation log has no size limit. It is not injected into implementation agents — it is for human inspection only. Write it before writing the alignment document.
+
+---
+
 ## Alignment Output
 
 ### File path convention
 
-Write the alignment document to:
-- `docs/alignment-YYYYMMDD-HHMMSS-[slug].md` if a `docs/` directory exists
-- `architecture/alignment-YYYYMMDD-HHMMSS-[slug].md` if an `architecture/` directory exists and no `docs/` does
+Write both the deliberation log and the alignment document to:
+- `docs/` if it exists
+- `architecture/` if that exists and `docs/` does not
 - Create `docs/` and write there if neither exists
 
-The slug is a 3–5 word lowercase hyphenated summary of the feature (e.g., `user-notifications`, `oauth-login`). The time component (HHMMSS) prevents collision when the same task is run multiple times in a day.
+Both files share the same timestamp and slug: `YYYYMMDD-HHMMSS-[slug]`. The slug is a 3–5 word lowercase hyphenated summary of the feature (e.g., `user-notifications`, `oauth-login`).
 
 ### Size constraint
 
-The alignment document must be **≤ 600 words**. This is a hard limit — the document is included verbatim in every implementation agent's spawn payload. If the deliberation output would exceed this, summarize rather than transcribe.
+The alignment document must be **≤ 600 words**. This is a hard limit — the document is included verbatim in every implementation agent's spawn payload. If the deliberation output would exceed this, summarize rather than transcribe. The deliberation log has no such constraint.
 
 ### Content template
 
