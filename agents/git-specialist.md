@@ -59,10 +59,11 @@ You never silently prefer one side. You never pick based on which is more recent
 
 When tasked with integrating multiple branches into a single clean commit:
 
-1. **Record the base.** Before any merging:
+1. **Record the base.** Before any merging, capture the current commit hash and hold it in context (shell variables do not persist across tool calls):
    ```bash
-   BASE=$(git rev-parse HEAD)
+   git rev-parse HEAD
    ```
+   Note this hash — you will need it for the squash step.
 
 2. **Merge each branch.** One at a time:
    ```bash
@@ -70,10 +71,9 @@ When tasked with integrating multiple branches into a single clean commit:
    ```
    If a merge conflicts, resolve it using your conflict resolution process above. If a conflict is contradictory, escalate — do not guess.
 
-3. **Squash into a single commit.** After all branches are merged:
+3. **Squash into a single commit.** After all branches are merged, reset to the base hash you recorded in step 1 and commit:
    ```bash
-   git reset --soft $BASE
-   git commit -m "<commit message>"
+   git reset --soft <base-hash> && git commit -m "<commit message>"
    ```
 
 4. **Clean up.** Delete merged branches and remove any temporary working directories as instructed.
