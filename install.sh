@@ -43,11 +43,11 @@ sha256() {
 #   rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*
 #     — cleans up exactly these two temp files after the retro completes
 #   Tracking file (init + append) and log prepend use Read/Write tools — no Bash needed.
-REQUIRED_PERMISSIONS='["Bash(!cat .claude/:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
+REQUIRED_PERMISSIONS='["!cat .claude/:*","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
 
 # Permissions added by previous installer versions that are no longer needed.
 # Removed on every run so stale entries don't accumulate.
-STALE_PERMISSIONS='["Bash(cat:*)","Bash(cat .claude/:*)","Bash(echo:*)","Bash(mv:*)","Bash(rm:*)","Bash(mv docs/trifecta-log-:*)","Bash(mv architecture/trifecta-log-:*)"]'
+STALE_PERMISSIONS='["Bash(cat:*)","Bash(cat .claude/:*)","Bash(!cat .claude/:*)","Bash(echo:*)","Bash(mv:*)","Bash(rm:*)","Bash(mv docs/trifecta-log-:*)","Bash(mv architecture/trifecta-log-:*)"]'
 
 # Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and required Bash permissions
 # into a settings.json file. Removes stale permissions from previous versions.
