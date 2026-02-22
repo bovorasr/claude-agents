@@ -31,7 +31,7 @@ The agentId is returned by the Task tool in the tool result. This file is writte
 At the **very start of the skill** (before Step 0), clear this file to prevent state leaking from previous sessions:
 
 ```bash
-> .claude/retro-session-agents.txt
+echo -n > .claude/retro-session-agents.txt
 ```
 
 ---

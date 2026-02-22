@@ -31,7 +31,7 @@ The retrospective protocol is:
 Clear the agent tracking file to prevent state from leaking from previous sessions:
 
 ```bash
-> .claude/retro-session-agents.txt
+echo -n > .claude/retro-session-agents.txt
 ```
 
 **Agent ID tracking (throughout the entire session):** After every Task call completes — trifecta agents, implementation agents, all of them — immediately append a line to `.claude/retro-session-agents.txt`:

@@ -35,9 +35,18 @@ sha256() {
   fi
 }
 
-# Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 into a settings.json file.
-# Uses jq if available; creates a fresh file without it; prints manual
-# instructions if jq is missing and the file already exists.
+# Write CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and required Bash permissions
+# into a settings.json file. Uses jq if available; creates a fresh file without
+# it; prints manual instructions if jq is missing and the file already exists.
+#
+# Required Bash permissions:
+#   cat   — !cat inline commands in SKILL.md at invocation time
+#   echo  — writing/clearing the agent tracking file
+#   bash .claude/skills/team/retro-extractor.sh — running the retro extractor
+#   mv    — atomic rename in the log prepend step
+#   rm    — cleanup of temp files after prepend
+REQUIRED_PERMISSIONS='["Bash(cat:*)","Bash(echo:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(mv:*)","Bash(rm:*)"]'
+
 write_flag() {
   local settings_file="$1"
   local dir
@@ -47,41 +56,51 @@ write_flag() {
     if [ -f "$settings_file" ]; then
       local tmp
       tmp="$(mktemp)"
-      jq '.env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1"' "$settings_file" > "$tmp"
+      jq --argjson perms "$REQUIRED_PERMISSIONS" \
+        '.env["CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"] = "1" |
+         .permissions.allow = ((.permissions.allow // []) + $perms | unique)' \
+        "$settings_file" > "$tmp"
       mv "$tmp" "$settings_file"
     else
-      printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  }\n}\n' > "$settings_file"
+      printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  },\n  "permissions": {\n    "allow": %s\n  }\n}\n' "$REQUIRED_PERMISSIONS" > "$settings_file"
     fi
-    echo "  [flag set]   ${settings_file}"
+    echo "  [set]        ${settings_file}"
   elif [ ! -f "$settings_file" ]; then
     mkdir -p "$dir"
-    printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  }\n}\n' > "$settings_file"
-    echo "  [flag set]   ${settings_file}"
+    printf '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"\n  },\n  "permissions": {\n    "allow": %s\n  }\n}\n' "$REQUIRED_PERMISSIONS" > "$settings_file"
+    echo "  [set]        ${settings_file}"
   else
     echo "  [jq missing] Add this to ${settings_file} manually:"
     echo '               "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"}'
+    echo "               \"permissions\": {\"allow\": ${REQUIRED_PERMISSIONS}}"
   fi
 }
 
-# Prompt the user to enable the flag in a given settings.json, unless it's
-# already present. Skips the prompt (prints manual instructions) when
-# non-interactive.
+# Prompt the user to enable the flag + permission in a given settings.json,
+# unless both are already present. Skips the prompt when non-interactive.
 enable_flag() {
   local settings_file="$1"
   local label="$2"
-  if [ -f "$settings_file" ] && grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null; then
-    echo "  [flag set]   already enabled in ${label}"
+  local has_flag=false has_perm=false
+  if [ -f "$settings_file" ]; then
+    grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null && has_flag=true
+    # Check for the retro-extractor permission as a proxy for all required permissions
+    grep -qF 'retro-extractor' "$settings_file" 2>/dev/null && has_perm=true
+  fi
+  if [ "$has_flag" = true ] && [ "$has_perm" = true ]; then
+    echo "  [set]        already configured in ${label}"
     return
   fi
   if [ "$INTERACTIVE" = true ]; then
-    printf "  Enable CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS in %s? [y/N] " "$label"
+    printf "  Enable CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS + required Bash permissions in %s? [y/N] " "$label"
     read -r _flag_answer < /dev/tty
     case "$_flag_answer" in
       y|Y|yes|YES) write_flag "$settings_file" ;;
-      *) echo "  [skipped]    add manually: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1" ;;
+      *) echo "  [skipped]    see README Prerequisites for manual setup instructions" ;;
     esac
   else
-    echo "  [manual]     add to ${settings_file}: CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
+    echo "  [manual]     see README Prerequisites for required settings"
+    echo "               or re-run this installer interactively"
   fi
 }
 
@@ -327,10 +346,10 @@ if [ "$COUNT_CONFLICTS" -gt 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 4: Offer to enable the required environment flag
+# Step 4: Offer to enable the required flag + permissions
 # ---------------------------------------------------------------------------
 echo ""
-echo "Enable experimental agent teams flag:"
+echo "Configure /team requirements (experimental flag + Bash permissions):"
 enable_flag "${INSTALL_DIR}/settings.json" "${INSTALL_DIR}/settings.json"
 
 echo ""

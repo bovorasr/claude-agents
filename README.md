@@ -47,17 +47,36 @@ This separation means you can freely customize an agent's character (how it reas
 
 ## Prerequisites
 
-Agent teams are currently experimental and require a feature flag. The installer will prompt you to add it — but if you need to set it manually:
+Agent teams are currently experimental and require a feature flag plus a bash permission. The installer will prompt you to add both — but if you need to set them manually:
 
 ```json
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(bash .claude/skills/team/retro-extractor.sh:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)"
+    ]
   }
 }
 ```
 
-Add this to `.claude/settings.json` in your project, `~/.claude/settings.json` for all projects, or export `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in your shell.
+Add this to `.claude/settings.json` in your project or `~/.claude/settings.json` for all projects. What each permission is for:
+
+| Permission | Used for |
+|---|---|
+| `Bash(cat:*)` | Loading agent definitions and protocol files inline at skill invocation |
+| `Bash(echo:*)` | Writing and clearing the agent ID tracking file during the session |
+| `Bash(bash .claude/skills/team/retro-extractor.sh:*)` | Running the transcript extraction script in the retrospective phase |
+| `Bash(mv:*)` | Atomic rename when prepending the retrospective to the deliberation log |
+| `Bash(rm:*)` | Cleaning up temp files after the retrospective completes |
+
+**If you have a `settings.local.json` with a custom `permissions.allow` list**, add `"Bash(cat:*)"` there as well — an explicit allow list in local settings takes precedence over the project `settings.json`.
 
 ## Usage
 
