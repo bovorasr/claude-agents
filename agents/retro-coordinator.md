@@ -4,7 +4,7 @@ description: >
   Facilitates post-session retrospectives. Receives pre-extracted transcript
   summaries and session logs, then analyzes participant behavior, synthesizes
   observations, and produces actionable feedback.
-model: claude-opus-4-6
+model: opus
 permissionMode: plan
 maxTurns: 30
 tools:
