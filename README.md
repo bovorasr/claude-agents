@@ -56,7 +56,7 @@ Agent teams are currently experimental and require a feature flag plus a bash pe
   },
   "permissions": {
     "allow": [
-      "Bash(cat .claude/:*)",
+      "Bash(!cat .claude/:*)",
       "Bash(bash .claude/skills/team/retro-extractor.sh:*)",
       "Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"
     ]
@@ -68,7 +68,7 @@ Add this to `.claude/settings.json` in your project or `~/.claude/settings.json`
 
 | Permission | Used for |
 |---|---|
-| `Bash(cat .claude/:*)` | Loading agent definitions and protocol files at skill invocation — scoped to `.claude/` only |
+| `Bash(!cat .claude/:*)` | Loading agent definitions and protocol files at skill invocation — scoped to `.claude/` only |
 | `Bash(bash .claude/skills/team/retro-extractor.sh:*)` | Running the transcript extraction script in the retrospective phase — exact script path |
 | `Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)` | Cleaning up exactly these two temp files after the retrospective completes |
 

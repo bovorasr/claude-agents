@@ -40,14 +40,14 @@ sha256() {
 # it; prints manual instructions if jq is missing and the file already exists.
 #
 # Required Bash permissions (scoped as tightly as possible to actual usage):
-#   cat .claude/:*
+#   !cat .claude/:*
 #     — !cat inline commands in SKILL.md load agent/protocol files from .claude/
 #   bash .claude/skills/team/retro-extractor.sh:*
 #     — runs the retro transcript extraction script (exact script path)
 #   rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*
 #     — cleans up exactly these two temp files after the retro completes
 #   Tracking file (init + append) and log prepend use Read/Write tools — no Bash needed.
-REQUIRED_PERMISSIONS='["Bash(cat .claude/:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
+REQUIRED_PERMISSIONS='["Bash(!cat .claude/:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
 
 write_flag() {
   local settings_file="$1"
