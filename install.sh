@@ -4,7 +4,6 @@ set -euo pipefail
 REPO="bovorasr/claude-agents"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
-MANIFEST_FILE=".claude/.agent-team-manifest"
 
 FILES=(
   "agents/architect.md"
@@ -39,6 +38,42 @@ if [ -c /dev/tty ]; then
 else
   INTERACTIVE=false
 fi
+
+# ---------------------------------------------------------------------------
+# Determine install directory — project (.claude/) or global (~/.claude/)
+# ---------------------------------------------------------------------------
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
+
+if [ -n "$GIT_ROOT" ]; then
+  INSTALL_DIR="${GIT_ROOT}/.claude"
+  echo "Project: ${GIT_ROOT}"
+  echo "Installing into: ${INSTALL_DIR}/"
+  echo ""
+else
+  echo "No git project detected in the current directory."
+  echo ""
+  if [ "$INTERACTIVE" = true ]; then
+    printf "Install globally to ~/.claude/ instead? [y/N] "
+    read -r _global_answer < /dev/tty
+    case "$_global_answer" in
+      y|Y|yes|YES)
+        INSTALL_DIR="${HOME}/.claude"
+        echo "Installing into: ${INSTALL_DIR}/"
+        echo ""
+        ;;
+      *)
+        echo "Aborted. Run this installer from inside a project directory."
+        exit 0
+        ;;
+    esac
+  else
+    echo "ERROR: Not in a git project and no TTY available for prompting." >&2
+    echo "Run this installer from inside your project directory." >&2
+    exit 1
+  fi
+fi
+
+MANIFEST_FILE="${INSTALL_DIR}/.agent-team-manifest"
 
 # ---------------------------------------------------------------------------
 # Summary counters (exported so handle_conflict can update them)
@@ -142,11 +177,11 @@ echo ""
 # ---------------------------------------------------------------------------
 # Step 3: Process each file — truncate manifest first, then append per file
 # ---------------------------------------------------------------------------
-mkdir -p ".claude"
+mkdir -p "${INSTALL_DIR}"
 > "$MANIFEST_FILE"
 
 for file in "${FILES[@]}"; do
-  target=".claude/${file}"
+  target="${INSTALL_DIR}/${file}"
   tmp_file="${WORK_TMPDIR}/${file}"
 
   upstream_hash="$(sha256 "$tmp_file")"
@@ -221,7 +256,7 @@ done
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
-echo "Done."
+echo "Done. Installed to: ${INSTALL_DIR}/"
 echo "  Installed:  ${COUNT_INSTALLED}"
 echo "  Updated:    ${COUNT_UPDATED}"
 echo "  Unchanged:  ${COUNT_SKIPPED}"
@@ -230,10 +265,10 @@ if [ "$COUNT_CONFLICTS" -gt 0 ]; then
 fi
 echo ""
 echo "Prerequisites:"
-echo "  Add to your environment or .claude/settings.json:"
+echo "  Add to your environment or ${INSTALL_DIR}/settings.json:"
 echo "    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"
 echo ""
 echo "Usage:"
 echo "  /team <describe what you want to build>"
 echo ""
-echo "To update later, re-run the same install command."
+echo "To update later, re-run the same install command from the same directory."

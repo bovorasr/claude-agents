@@ -4,11 +4,13 @@ Reusable Claude Code agent definitions and skills for orchestrating teams of age
 
 ## Quick Install
 
-From your project root:
+From inside a project directory:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bovorasr/claude-agents/main/install.sh | bash
 ```
+
+The installer detects your git project root and installs into its `.claude/` directory. If you run it outside a git project, it will prompt before installing into `~/.claude/` (your global Claude config) instead. In a non-interactive environment with no project detected, it exits with an error rather than silently installing globally.
 
 This installs the following into `.claude/`:
 
