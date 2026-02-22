@@ -28,11 +28,7 @@ senior-dev: c99e5678def
 
 The agentId is returned by the Task tool in the tool result. This file is written incrementally — do not rely on in-context memory alone over a long session.
 
-At the **very start of the skill** (before Step 0), clear this file to prevent state leaking from previous sessions:
-
-```bash
-echo -n > .claude/retro-session-agents.txt
-```
+At the **very start of the skill** (before Step 0), use the Write tool to create `.claude/retro-session-agents.txt` with empty content. This clears any state from previous sessions. To append each entry: use the Read tool to get the current contents, add the new `role: agentId` line, and use the Write tool to save it back.
 
 ---
 
@@ -132,25 +128,30 @@ Lead spawns **retro-coordinator** again with:
 
 ## Prepending the Retrospective to the Deliberation Log
 
-After Phase 3 returns the retrospective text, the lead prepends it to the deliberation log using this safe atomic pattern:
+After Phase 3 returns the retrospective text:
+
+1. Use the **Read tool** to get the current contents of the deliberation log (`docs/trifecta-log-<timestamp>-<slug>.md`).
+2. Construct the combined content: the Phase 3 retrospective text, then `\n\n---\n\n`, then the original log content.
+3. Use the **Write tool** to save the combined content back to the log file.
+4. Run cleanup with the Bash tool:
 
 ```bash
-LOG_PATH="docs/trifecta-log-<timestamp>-<slug>.md"  # use the actual path
-RETRO_CONTENT="<the Phase 3 output>"
-
-if [ -f "$LOG_PATH" ] && [ -w "$LOG_PATH" ]; then
-  { printf '%s\n\n---\n\n' "$RETRO_CONTENT"; cat "$LOG_PATH"; } > "${LOG_PATH}.tmp" \
-    && mv "${LOG_PATH}.tmp" "$LOG_PATH" \
-    && rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt
-else
-  echo "WARNING: cannot prepend to $LOG_PATH (missing or not writable)"
-fi
+rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt
 ```
 
-Key points:
-- The `mv` pattern is atomic on same-filesystem operations (guaranteed here). Do not use `cat > original && rm temp` — that is NOT atomic and has a data-loss window.
-- Cleanup of `retro-transcripts.txt` and `retro-session-agents.txt` only runs on success. If the prepend fails, artifacts are left in place for debugging.
-- The resulting file has the retrospective at the top, then `---`, then the original deliberation log.
+If the Write fails, skip cleanup and note the failure — temp files left in `.claude/` can be used for debugging.
+
+The resulting file structure:
+
+```
+# Trifecta Retrospective
+[≤ 800 words]
+
+---
+
+# Trifecta Deliberation Log
+[original log, unchanged]
+```
 
 Final file structure:
 

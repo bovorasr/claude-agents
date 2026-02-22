@@ -28,19 +28,15 @@ The retrospective protocol is:
 
 ## Initialization (before Step 0)
 
-Clear the agent tracking file to prevent state from leaking from previous sessions:
+Use the Write tool to create `.claude/retro-session-agents.txt` with empty content. This clears any state from previous sessions.
 
-```bash
-echo -n > .claude/retro-session-agents.txt
-```
-
-**Agent ID tracking (throughout the entire session):** After every Task call completes — trifecta agents, implementation agents, all of them — immediately append a line to `.claude/retro-session-agents.txt`:
+**Agent ID tracking (throughout the entire session):** After every Task call completes — trifecta agents, implementation agents, all of them — use the Read tool to get the current contents of `.claude/retro-session-agents.txt`, append a new line in this exact format, then use the Write tool to save it back:
 
 ```
 <role>: <agentId>
 ```
 
-Exact format, no extra spaces. Example: `architect: a77e4249dd7dd9b9e`. The agentId is returned by the Task tool in the tool result. Record every participant — by Step 8 you need the complete map.
+No extra spaces. Example: `architect: a77e4249dd7dd9b9e`. The agentId is returned by the Task tool in the tool result. Record every participant — by Step 8 you need the complete map.
 
 ---
 
@@ -113,7 +109,7 @@ After all implementation work is complete and before reporting done to the user,
 1. Run `bash .claude/skills/team/retro-extractor.sh "${CLAUDE_SESSION_ID}" > .claude/retro-transcripts.txt`, then read the output file and spawn retro-coordinator with the deliberation log content + transcript text + participant map inline (Phase 1).
 2. Spawn all session participants in parallel with their pre-extracted transcript text, role definition, and their assigned questions inline (Phase 2 self-assessments).
 3. Spawn retro-coordinator again with Phase 1 observations + all self-assessments (Phase 3 synthesis).
-4. Prepend the retrospective to the deliberation log using the atomic `mv` pattern from `retro-protocol.md`. Clean up temp artifacts on success.
+4. Prepend the retrospective to the deliberation log: use the Read tool to get the log contents, construct the combined text (retrospective + `\n\n---\n\n` + original log), and use the Write tool to save it back. Then run cleanup per `retro-protocol.md`.
 
 The `${CLAUDE_SESSION_ID}` value already in your context is the literal session UUID — pass it directly as the script argument.
 

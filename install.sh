@@ -39,13 +39,15 @@ sha256() {
 # into a settings.json file. Uses jq if available; creates a fresh file without
 # it; prints manual instructions if jq is missing and the file already exists.
 #
-# Required Bash permissions:
-#   cat   — !cat inline commands in SKILL.md at invocation time
-#   echo  — writing/clearing the agent tracking file
-#   bash .claude/skills/team/retro-extractor.sh — running the retro extractor
-#   mv    — atomic rename in the log prepend step
-#   rm    — cleanup of temp files after prepend
-REQUIRED_PERMISSIONS='["Bash(cat:*)","Bash(echo:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(mv:*)","Bash(rm:*)"]'
+# Required Bash permissions (scoped as tightly as possible to actual usage):
+#   cat .claude/:*
+#     — !cat inline commands in SKILL.md load agent/protocol files from .claude/
+#   bash .claude/skills/team/retro-extractor.sh:*
+#     — runs the retro transcript extraction script (exact script path)
+#   rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*
+#     — cleans up exactly these two temp files after the retro completes
+#   Tracking file (init + append) and log prepend use Read/Write tools — no Bash needed.
+REQUIRED_PERMISSIONS='["Bash(cat .claude/:*)","Bash(bash .claude/skills/team/retro-extractor.sh:*)","Bash(rm -f .claude/retro-transcripts.txt .claude/retro-session-agents.txt:*)"]'
 
 write_flag() {
   local settings_file="$1"
@@ -85,7 +87,7 @@ enable_flag() {
   if [ -f "$settings_file" ]; then
     grep -q "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS" "$settings_file" 2>/dev/null && has_flag=true
     # Check for the retro-extractor permission as a proxy for all required permissions
-    grep -qF 'retro-extractor' "$settings_file" 2>/dev/null && has_perm=true
+    grep -qF 'retro-extractor.sh' "$settings_file" 2>/dev/null && has_perm=true
   fi
   if [ "$has_flag" = true ] && [ "$has_perm" = true ]; then
     echo "  [set]        already configured in ${label}"
