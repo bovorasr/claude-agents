@@ -14,6 +14,47 @@ The worktree coordination protocol is:
 
 !`cat .claude/skills/team/worktree.md`
 
+The trifecta deliberation protocol is:
+
+!`cat .claude/skills/team/trifecta.md`
+
+---
+
+## Step 0: Trifecta Deliberation
+
+Before any implementation planning, classify the user's request into one of three categories:
+
+**Category A — Feature / product decision** (what to build, what behavior to add, what the user experiences): run full trifecta.
+> *Examples: "add user notifications," "redesign the checkout flow," "add OAuth login"*
+
+**Category B — Technical change with user-facing or scope implications**: run full trifecta with a scoped question.
+> *Examples: "refactor auth to support OAuth" (login flow changes), "migrate REST to GraphQL" (data availability changes), "improve search performance" (perceived UX change), any change to authentication, permissions, data models visible to users, or deprecations users will encounter.*
+> The trifecta question is scoped: "Does this technical change have scope or UX implications that need alignment before implementation?" If all three roles answer no, the trifecta produces a minimal alignment doc (≤ 200 words) and implementation proceeds. If any role identifies implications, the full deliberation follows.
+
+**Category C — Purely mechanical task** (implementation of a fully-specified change, no scope or user-facing decisions): skip trifecta, proceed directly to Orchestration Rules.
+> *Examples: "fix the null pointer in UserService," "rename method X to Y," "add a unit test for existing behavior"*
+
+**For Categories A and B — run the deliberation loop per `trifecta.md`:**
+
+1. Spawn architect, product-owner, and ux **in parallel**. Each agent's spawn payload contains ONLY: the user's request verbatim, their own role definition (system prompt text), and the Round 1 format instructions from `trifecta.md`. Do NOT include `trifecta.md` content in agent spawn payloads — it is for the lead's use only.
+
+2. Collect Round 1 positions. For Category B: if all three agents answer No to both implications questions, produce a minimal alignment doc (≤ 200 words) and skip to Orchestration Rules. If any agent answers Yes, treat all existing responses as Round 1 positions and proceed to Round 2.
+
+3. Synthesize conflicts into a CONFLICT BRIEF using the format template in `trifecta.md`.
+
+4. Run Round 2 (spawn each agent with the CONFLICT BRIEF; ≤ 200 words per response). Run Round 3 if significant disagreements remain (≤ 150 words per agent, focused on blocking objections only). After Round 3, log remaining tensions — they do not block. If any role still has a blocking objection after Round 3, escalate to the human per the Escalation section in `trifecta.md`.
+
+5. Write the alignment document to the filesystem per the path convention in `trifecta.md`. Filename: `docs/alignment-YYYYMMDD-HHMMSS-[slug].md`. Hard limit: ≤ 600 words.
+
+6. **Present the alignment document to the user and get explicit approval.** Output the document, then ask: "Does this alignment match your intent? Reply YES to proceed to implementation, or describe what should change." Wait for an explicit affirmative before spawning any implementation agents. A clarifying question from the user is not approval.
+   - **If the user describes changes:** incorporate them unilaterally into the alignment document (the human is the ultimate decision-maker; their overrides are final), output the revised document, and repeat the approval prompt. Do not re-convene the trifecta unless the user explicitly requests it.
+   - **If the changes seem substantial enough to require new deliberation:** ask "This seems to require revisiting the deliberation — should I re-run the trifecta with this new constraint, or should I apply your changes directly?" and follow the user's answer.
+   - Repeat the approval loop until the user replies YES.
+
+7. Proceed to implementation planning (Orchestration Rules below), including the alignment document content verbatim in each implementation agent's spawn payload.
+
+**For Category C:** Proceed directly to Orchestration Rules.
+
 ---
 
 ## Orchestration Rules
@@ -41,4 +82,4 @@ The worktree coordination protocol is:
 
 ---
 
-Begin by producing your written plan for the user's request above.
+Begin by classifying the user's request (Step 0) and proceeding accordingly.

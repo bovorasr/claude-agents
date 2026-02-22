@@ -8,11 +8,14 @@ MANIFEST_FILE=".claude/.agent-team-manifest"
 
 FILES=(
   "agents/architect.md"
+  "agents/product-owner.md"
+  "agents/ux.md"
   "agents/senior-dev.md"
   "agents/junior-dev.md"
   "agents/merge-specialist.md"
   "skills/team/SKILL.md"
   "skills/team/worktree.md"
+  "skills/team/trifecta.md"
 )
 
 # ---------------------------------------------------------------------------
